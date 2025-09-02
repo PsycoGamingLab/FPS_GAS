@@ -4,6 +4,7 @@
 #include "ShooterCharacter.h"
 #include "ShooterWeapon.h"
 #include "EnhancedInputComponent.h"
+#include "FPS_GAS_PlayerState.h"
 #include "Components/InputComponent.h"
 #include "Components/PawnNoiseEmitterComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -13,8 +14,35 @@
 #include "TimerManager.h"
 #include "ShooterGameMode.h"
 
+UAbilitySystemComponent* AShooterCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
+void AShooterCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	// Init ability actor info for the server
+	InitAbilityActorInfo();
+}
+
+void AShooterCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+}
+
+void AShooterCharacter::InitAbilityActorInfo()
+{
+	AFPS_GAS_PlayerState * FPS_GAS_PlayerState = GetPlayerState<AFPS_GAS_PlayerState>();
+	check(FPS_GAS_PlayerState);
+
+	AbilitySystemComponent = FPS_GAS_PlayerState->GetAbilitySystemComponent();	
+}
+
 AShooterCharacter::AShooterCharacter()
 {
+
 	// create the noise emitter component
 	PawnNoiseEmitter = CreateDefaultSubobject<UPawnNoiseEmitterComponent>(TEXT("Pawn Noise Emitter"));
 

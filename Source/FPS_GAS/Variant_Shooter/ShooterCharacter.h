@@ -3,16 +3,19 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AbilitySystemInterface.h"
 #include "FPS_GASCharacter.h"
 #include "ShooterWeaponHolder.h"
 #include "ShooterCharacter.generated.h"
 
+class UAbilitySystemComponent;
 class AShooterWeapon;
 class UInputAction;
 class UInputComponent;
 class UPawnNoiseEmitterComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FBulletCountUpdatedDelegate, int32, MagazineSize, int32, Bullets);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDamagedDelegate, float, LifePercent);
 
 /**
@@ -21,16 +24,30 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDamagedDelegate, float, LifePercent
  *  Manages health and death
  */
 UCLASS(abstract)
-class FPS_GAS_API AShooterCharacter : public AFPS_GASCharacter, public IShooterWeaponHolder
+class FPS_GAS_API AShooterCharacter : public AFPS_GASCharacter, public IShooterWeaponHolder,public IAbilitySystemInterface
 {
 	GENERATED_BODY()
-	
+
 	/** AI Noise emitter component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UPawnNoiseEmitterComponent* PawnNoiseEmitter;
 
+public:
+	
+	/** Ability System Component */
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual void PossessedBy(AController* NewController) override;
+
+	virtual void OnRep_PlayerState() override;
+	
 protected:
 
+	/** Ability System Component */
+	UPROPERTY()
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
+
+	virtual void InitAbilityActorInfo();
+	
 	/** Fire weapon input action */
 	UPROPERTY(EditAnywhere, Category ="Input")
 	UInputAction* FireAction;
@@ -74,7 +91,6 @@ protected:
 	FTimerHandle RespawnTimer;
 
 public:
-
 	/** Bullet count updated delegate */
 	FBulletCountUpdatedDelegate OnBulletCountUpdated;
 
@@ -82,12 +98,10 @@ public:
 	FDamagedDelegate OnDamaged;
 
 public:
-
 	/** Constructor */
 	AShooterCharacter();
 
 protected:
-
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
 
@@ -98,12 +112,11 @@ protected:
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 
 public:
-
 	/** Handle incoming damage */
-	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator,
+	                         AActor* DamageCauser) override;
 
 public:
-
 	/** Handles start firing input */
 	UFUNCTION(BlueprintCallable, Category="Input")
 	void DoStartFiring();
@@ -117,7 +130,6 @@ public:
 	void DoSwitchWeapon();
 
 public:
-
 	//~Begin IShooterWeaponHolder interface
 
 	/** Attaches a weapon's meshes to the owner */
@@ -150,7 +162,6 @@ public:
 	//~End IShooterWeaponHolder interface
 
 protected:
-
 	/** Returns true if the character already owns a weapon of the given class */
 	AShooterWeapon* FindWeaponOfType(TSubclassOf<AShooterWeapon> WeaponClass) const;
 
