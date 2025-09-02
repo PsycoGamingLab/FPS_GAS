@@ -28,6 +28,7 @@ void AShooterCharacter::PossessedBy(AController* NewController)
 
 	// Init ability actor info for the server
 	InitAbilityActorInfo();
+	AddCharacterAbilities();
 }
 
 void AShooterCharacter::OnRep_PlayerState()
@@ -42,6 +43,14 @@ void AShooterCharacter::InitAbilityActorInfo()
 	FPS_GAS_PlayerState->GetAbilitySystemComponent()->InitAbilityActorInfo(FPS_GAS_PlayerState, this);
 	Cast<UFPS_GAS_AbilitySystemComponent>(FPS_GAS_PlayerState->GetAbilitySystemComponent())->AbilityActorInfoSet();
 	AbilitySystemComponent = FPS_GAS_PlayerState->GetAbilitySystemComponent();	
+}
+
+void AShooterCharacter::AddCharacterAbilities()
+{
+	UFPS_GAS_AbilitySystemComponent* FPS_GAS_ASC = CastChecked<UFPS_GAS_AbilitySystemComponent>(AbilitySystemComponent);
+	if(!HasAuthority())return;;
+
+	FPS_GAS_ASC->AddCharacterAbilities(StartupAbilities);
 }
 
 AShooterCharacter::AShooterCharacter()

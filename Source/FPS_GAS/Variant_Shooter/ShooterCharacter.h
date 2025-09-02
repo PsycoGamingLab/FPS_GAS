@@ -6,7 +6,10 @@
 #include "AbilitySystemInterface.h"
 #include "FPS_GASCharacter.h"
 #include "ShooterWeaponHolder.h"
+#include "Abilities/GameplayAbility.h"
+#include "ShooterWeapon.h"
 #include "ShooterCharacter.generated.h"
+
 
 class UAbilitySystemComponent;
 class AShooterWeapon;
@@ -39,7 +42,9 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 
 	virtual void OnRep_PlayerState() override;
-	
+
+	UFUNCTION()
+	AShooterWeapon* GetCurrentWeapon(){return CurrentWeapon;}
 protected:
 
 	/** Ability System Component */
@@ -47,6 +52,8 @@ protected:
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
 	virtual void InitAbilityActorInfo();
+
+	void AddCharacterAbilities();
 	
 	/** Fire weapon input action */
 	UPROPERTY(EditAnywhere, Category ="Input")
@@ -128,6 +135,7 @@ public:
 	/** Handles switch weapon input */
 	UFUNCTION(BlueprintCallable, Category="Input")
 	void DoSwitchWeapon();
+	
 
 public:
 	//~Begin IShooterWeaponHolder interface
@@ -174,4 +182,10 @@ protected:
 
 	/** Called from the respawn timer to destroy this character and force the PC to respawn */
 	void OnRespawn();
+
+private:
+
+	/* Ability System */
+	UPROPERTY(EditAnywhere, Category = "Abilities")
+	TArray<TSubclassOf<UGameplayAbility>> StartupAbilities;
 };

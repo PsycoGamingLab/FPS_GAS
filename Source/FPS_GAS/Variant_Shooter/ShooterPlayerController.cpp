@@ -10,8 +10,10 @@
 #include "ShooterCharacter.h"
 #include "ShooterBulletCounterUI.h"
 #include "FPS_GAS.h"
+#include "FPS_GAS_AbilitySystemComponent.h"
 #include "Input/FPS_GAS_InputComponent.h"
 #include "Widgets/Input/SVirtualJoystick.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "FPS_GAS_GameplayTags.h"
 
 AShooterPlayerController::AShooterPlayerController()
@@ -19,21 +21,14 @@ AShooterPlayerController::AShooterPlayerController()
 	bReplicates = true;
 }
 
-void AShooterPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
+UFPS_GAS_AbilitySystemComponent* AShooterPlayerController::GetASC()
 {
-	GEngine->AddOnScreenDebugMessage(1,3.f,FColor::Red,*InputTag.ToString());
-}
+	if (FPS_GAS_AbilitySystemComponent == nullptr)
+	{
+		FPS_GAS_AbilitySystemComponent = Cast<UFPS_GAS_AbilitySystemComponent>(UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetPawn()));
+	}
 
-void AShooterPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
-{
-	GEngine->AddOnScreenDebugMessage(1,3.f,FColor::Red,*InputTag.ToString());
-	
-}
-
-void AShooterPlayerController::AbilityInputTagHeld(FGameplayTag InputTag)
-{
-	GEngine->AddOnScreenDebugMessage(1,3.f,FColor::Red,*InputTag.ToString());
-	
+	return FPS_GAS_AbilitySystemComponent;
 }
 
 void AShooterPlayerController::BeginPlay()
@@ -82,11 +77,11 @@ void AShooterPlayerController::SetupInputComponent()
 	if (IsLocalPlayerController())
 	{
 		/* Start Ability System */
-		UFPS_GAS_InputComponent* MyIC = NewObject<UFPS_GAS_InputComponent>(this);
-		MyIC->RegisterComponent();
-		PushInputComponent(MyIC); // prende priorità su quello base
+		UFPS_GAS_InputComponent* IC = NewObject<UFPS_GAS_InputComponent>(this);
+		IC->RegisterComponent();
+		PushInputComponent(IC); 
 
-		MyIC->BindAbilityActions(InputConfig, this,
+		IC->BindAbilityActions(InputConfig, this,
 			&ThisClass::AbilityInputTagPressed,
 			&ThisClass::AbilityInputTagReleased,
 			&ThisClass::AbilityInputTagHeld);
@@ -176,4 +171,25 @@ void AShooterPlayerController::OnPawnDamaged(float LifePercent)
 	{
 		BulletCounterUI->BP_Damaged(LifePercent);
 	}
+}
+
+void AShooterPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
+{
+	GEngine->AddOnScreenDebugMessage(1,3.f,FColor::Red,*InputTag.ToString());
+	
+}
+
+void AShooterPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
+{
+	GEngine->AddOnScreenDebugMessage(1,3.f,FColor::Red,*InputTag.ToString());
+	if (GetASC() == nullptr)return;
+	GetASC()->AbilityInputTagReleased(InputTag);
+}
+
+void AShooterPlayerController::AbilityInputTagHeld(FGameplayTag InputTag)
+{
+	GEngine->AddOnScreenDebugMessage(1,3.f,FColor::Red,*InputTag.ToString());
+	if (GetASC() == nullptr)return;	
+	GetASC()->AbilityInputTagHeld(InputTag);
+	
 }

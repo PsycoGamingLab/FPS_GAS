@@ -10,6 +10,7 @@
 class UInputMappingContext;
 class AShooterCharacter;
 class UShooterBulletCounterUI;
+class UFPS_GAS_AbilitySystemComponent;
 
 /**
  *  Simple PlayerController for a first person shooter game
@@ -23,7 +24,8 @@ class FPS_GAS_API AShooterPlayerController : public APlayerController
 
 public:
 	AShooterPlayerController();
-	
+
+	UFPS_GAS_AbilitySystemComponent* GetASC();
 protected:
 
 	/** Input mapping contexts for this player */
@@ -67,6 +69,11 @@ private:
 	void AbilityInputTagPressed(FGameplayTag InputTag);
 	void AbilityInputTagReleased(FGameplayTag InputTag);
 	void AbilityInputTagHeld(FGameplayTag InputTag);
+
+	UPROPERTY()
+	TObjectPtr<UFPS_GAS_AbilitySystemComponent> FPS_GAS_AbilitySystemComponent;
+
+
 
 protected:
 

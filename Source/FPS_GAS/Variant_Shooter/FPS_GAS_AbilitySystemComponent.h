@@ -9,6 +9,7 @@
 /**
  * 
  */
+
 UCLASS()
 class FPS_GAS_API UFPS_GAS_AbilitySystemComponent : public UAbilitySystemComponent
 {
@@ -16,6 +17,12 @@ class FPS_GAS_API UFPS_GAS_AbilitySystemComponent : public UAbilitySystemCompone
 	
 public:
 	void AbilityActorInfoSet();
+
+	void AddCharacterAbilities(const TArray<TSubclassOf<UGameplayAbility>>& StartupAbilities );
+
+	void AbilityInputTagHeld(const FGameplayTag& InputTag);
+	void AbilityInputTagReleased(const FGameplayTag& InputTag);
+	void AbilityInputTagPressed(const FGameplayTag& InputTag);
 
 protected:
 	UFUNCTION(Client,Reliable)
