@@ -3,5 +3,15 @@
 #include "NativeGameplayTags.h"
 
 
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_Weapon_Fire);
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effects_HitReact);
+struct FFPS_GAS_GameplayTags
+{
+public:
+	static const FFPS_GAS_GameplayTags& Get() { return GameplayTags; }
+	static void InitializeNativeGameplayTags();
+
+	FGameplayTag Effects_HitReact;
+	FGameplayTag InputTag_Weapon_Fire;
+
+private:
+	static FFPS_GAS_GameplayTags GameplayTags;
+};

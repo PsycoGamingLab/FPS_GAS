@@ -10,7 +10,31 @@
 #include "ShooterCharacter.h"
 #include "ShooterBulletCounterUI.h"
 #include "FPS_GAS.h"
+#include "Input/FPS_GAS_InputComponent.h"
 #include "Widgets/Input/SVirtualJoystick.h"
+#include "FPS_GAS_GameplayTags.h"
+
+AShooterPlayerController::AShooterPlayerController()
+{
+	bReplicates = true;
+}
+
+void AShooterPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
+{
+	GEngine->AddOnScreenDebugMessage(1,3.f,FColor::Red,*InputTag.ToString());
+}
+
+void AShooterPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
+{
+	GEngine->AddOnScreenDebugMessage(1,3.f,FColor::Red,*InputTag.ToString());
+	
+}
+
+void AShooterPlayerController::AbilityInputTagHeld(FGameplayTag InputTag)
+{
+	GEngine->AddOnScreenDebugMessage(1,3.f,FColor::Red,*InputTag.ToString());
+	
+}
 
 void AShooterPlayerController::BeginPlay()
 {
@@ -28,11 +52,10 @@ void AShooterPlayerController::BeginPlay()
 			{
 				// add the controls to the player screen
 				MobileControlsWidget->AddToPlayerScreen(0);
-
-			} else {
-
+			}
+			else
+			{
 				UE_LOG(LogFPS_GAS, Error, TEXT("Could not spawn mobile controls widget."));
-
 			}
 		}
 
@@ -42,23 +65,36 @@ void AShooterPlayerController::BeginPlay()
 		if (BulletCounterUI)
 		{
 			BulletCounterUI->AddToPlayerScreen(0);
-
-		} else {
-
-			UE_LOG(LogFPS_GAS, Error, TEXT("Could not spawn bullet counter widget."));
-
 		}
-		
+		else
+		{
+			UE_LOG(LogFPS_GAS, Error, TEXT("Could not spawn bullet counter widget."));
+		}
 	}
 }
 
 void AShooterPlayerController::SetupInputComponent()
 {
+
+	Super::SetupInputComponent();
+	
 	// only add IMCs for local player controllers
 	if (IsLocalPlayerController())
 	{
+		/* Start Ability System */
+		UFPS_GAS_InputComponent* MyIC = NewObject<UFPS_GAS_InputComponent>(this);
+		MyIC->RegisterComponent();
+		PushInputComponent(MyIC); // prende priorità su quello base
+
+		MyIC->BindAbilityActions(InputConfig, this,
+			&ThisClass::AbilityInputTagPressed,
+			&ThisClass::AbilityInputTagReleased,
+			&ThisClass::AbilityInputTagHeld);
+		/* End Ability System */
+		
 		// add the input mapping contexts
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<
+			UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
 		{
 			for (UInputMappingContext* CurrentContext : DefaultMappingContexts)
 			{
@@ -116,7 +152,8 @@ void AShooterPlayerController::OnPawnDestroyed(AActor* DestroyedActor)
 		// spawn a character at the player start
 		const FTransform SpawnTransform = RandomPlayerStart->GetActorTransform();
 
-		if (AShooterCharacter* RespawnedCharacter = GetWorld()->SpawnActor<AShooterCharacter>(CharacterClass, SpawnTransform))
+		if (AShooterCharacter* RespawnedCharacter = GetWorld()->SpawnActor<AShooterCharacter>(
+			CharacterClass, SpawnTransform))
 		{
 			// possess the character
 			Possess(RespawnedCharacter);

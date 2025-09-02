@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Input/FPS_GAS_InputConfig.h"
 #include "ShooterPlayerController.generated.h"
 
 class UInputMappingContext;
@@ -15,10 +16,13 @@ class UShooterBulletCounterUI;
  *  Manages input mappings
  *  Respawns the player pawn when it's destroyed
  */
-UCLASS(abstract)
+UCLASS()
 class FPS_GAS_API AShooterPlayerController : public APlayerController
 {
 	GENERATED_BODY()
+
+public:
+	AShooterPlayerController();
 	
 protected:
 
@@ -51,6 +55,18 @@ protected:
 
 	/** Pointer to the bullet counter UI widget */
 	TObjectPtr<UShooterBulletCounterUI> BulletCounterUI;
+
+private:
+	UPROPERTY(EditAnywhere,Category="Input")
+	TObjectPtr<UInputMappingContext> FPS_GAS_Context;
+
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	TObjectPtr<UFPS_GAS_InputConfig> InputConfig;
+
+
+	void AbilityInputTagPressed(FGameplayTag InputTag);
+	void AbilityInputTagReleased(FGameplayTag InputTag);
+	void AbilityInputTagHeld(FGameplayTag InputTag);
 
 protected:
 

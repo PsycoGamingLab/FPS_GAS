@@ -14,4 +14,11 @@ class FPS_GAS_API UFPS_GAS_AbilitySystemComponent : public UAbilitySystemCompone
 {
 	GENERATED_BODY()
 	
+public:
+	void AbilityActorInfoSet();
+
+protected:
+	UFUNCTION(Client,Reliable)
+	void ClientEffectedApplied(UAbilitySystemComponent* AbilitySystemComponent,const FGameplayEffectSpec& EffectSpec, FActiveGameplayEffectHandle ActiveEffectHandle);
+
 };

@@ -2,8 +2,11 @@
 
 
 #include "ShooterCharacter.h"
+
+#include "AbilitySystemComponent.h"
 #include "ShooterWeapon.h"
 #include "EnhancedInputComponent.h"
+#include "FPS_GAS_AbilitySystemComponent.h"
 #include "FPS_GAS_PlayerState.h"
 #include "Components/InputComponent.h"
 #include "Components/PawnNoiseEmitterComponent.h"
@@ -36,7 +39,8 @@ void AShooterCharacter::InitAbilityActorInfo()
 {
 	AFPS_GAS_PlayerState * FPS_GAS_PlayerState = GetPlayerState<AFPS_GAS_PlayerState>();
 	check(FPS_GAS_PlayerState);
-
+	FPS_GAS_PlayerState->GetAbilitySystemComponent()->InitAbilityActorInfo(FPS_GAS_PlayerState, this);
+	Cast<UFPS_GAS_AbilitySystemComponent>(FPS_GAS_PlayerState->GetAbilitySystemComponent())->AbilityActorInfoSet();
 	AbilitySystemComponent = FPS_GAS_PlayerState->GetAbilitySystemComponent();	
 }
 
