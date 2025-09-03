@@ -12,4 +12,10 @@ void FFPS_GAS_GameplayTags::InitializeNativeGameplayTags()
 		FName("InputTag.Weapon.Fire"),
 		FString("Input Tag for weapon fire")
 	);
+
+	// Ability
+	GameplayTags.Ability_Shoot = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Ability.Shoot"),
+		TEXT("Shoot ability tag"));
+	
 }

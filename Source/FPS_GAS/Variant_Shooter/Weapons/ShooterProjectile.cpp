@@ -17,6 +17,13 @@ AShooterProjectile::AShooterProjectile()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	bReplicates = true;             
+	SetReplicateMovement(true);      
+	SetNetUpdateFrequency(66.f);     
+	SetMinNetUpdateFrequency(33.f);
+
+	bNetUseOwnerRelevancy = true;
+	
 	// create the collision component and assign it as the root
 	RootComponent = CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("Collision Component"));
 
@@ -31,6 +38,7 @@ AShooterProjectile::AShooterProjectile()
 	ProjectileMovement->InitialSpeed = 3000.0f;
 	ProjectileMovement->MaxSpeed = 3000.0f;
 	ProjectileMovement->bShouldBounce = true;
+	ProjectileMovement->SetIsReplicated(true);
 
 	// set the default damage type
 	HitDamageType = UDamageType::StaticClass();

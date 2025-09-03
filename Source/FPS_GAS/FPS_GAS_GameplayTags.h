@@ -9,9 +9,11 @@ public:
 	static const FFPS_GAS_GameplayTags& Get() { return GameplayTags; }
 	static void InitializeNativeGameplayTags();
 
-	FGameplayTag Effects_HitReact;
+	// Input
 	FGameplayTag InputTag_Weapon_Fire;
+	
+	// Ability
+	FGameplayTag Ability_Shoot;
 
-private:
 	static FFPS_GAS_GameplayTags GameplayTags;
 };

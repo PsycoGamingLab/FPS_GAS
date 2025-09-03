@@ -24,7 +24,8 @@ UCLASS(abstract)
 class FPS_GAS_API AShooterWeapon : public AActor
 {
 	GENERATED_BODY()
-	
+
+public:
 	/** First person perspective mesh */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* FirstPersonMesh;
@@ -33,8 +34,15 @@ class FPS_GAS_API AShooterWeapon : public AActor
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* ThirdPersonMesh;
 
-protected:
+	TSubclassOf<AShooterProjectile> GetProjectileClass() const { return ProjectileClass; }
+	FName GetMuzzleSocketName() const { return MuzzleSocketName; }
+	float GetMuzzleOffset() const { return MuzzleOffset; }
+	float GetAimVariance() const { return AimVariance; }
+	bool CanFire() const;
 
+	FTransform ComputeMuzzleTransform_Server(const class AShooterCharacter* OwnerChar) const;
+
+protected:
 	/** Cast pointer to the weapon owner */
 	IShooterWeaponHolder* WeaponOwner;
 
@@ -48,7 +56,7 @@ protected:
 
 	/** Number of bullets in the current magazine */
 	int32 CurrentBullets = 0;
-	
+
 	/** Animation montage to play when firing this weapon */
 	UPROPERTY(EditAnywhere, Category="Animation")
 	UAnimMontage* FiringMontage;
@@ -109,13 +117,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Perception")
 	FName ShotNoiseTag = FName("Shot");
 
-public:	
-
+public:
 	/** Constructor */
 	AShooterWeapon();
 
 protected:
-	
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
 
@@ -123,13 +129,11 @@ protected:
 	virtual void EndPlay(EEndPlayReason::Type EndPlayReason) override;
 
 protected:
-
 	/** Called when the weapon's owner is destroyed */
 	UFUNCTION()
 	void OnOwnerDestroyed(AActor* DestroyedActor);
 
 public:
-
 	/** Activates this weapon and gets it ready to fire */
 	void ActivateWeapon();
 
@@ -143,7 +147,6 @@ public:
 	void StopFiring();
 
 protected:
-
 	/** Fire the weapon */
 	virtual void Fire();
 
@@ -157,7 +160,6 @@ protected:
 	FTransform CalculateProjectileSpawnTransform(const FVector& TargetLocation) const;
 
 public:
-
 	/** Returns the first person mesh */
 	UFUNCTION(BlueprintPure, Category="Weapon")
 	USkeletalMeshComponent* GetFirstPersonMesh() const { return FirstPersonMesh; };

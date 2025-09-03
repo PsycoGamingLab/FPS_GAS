@@ -11,10 +11,15 @@
 #include "Animation/AnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Pawn.h"
+#include "ShooterCharacter.h" 
+
 
 AShooterWeapon::AShooterWeapon()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	bReplicates = true;
+	SetReplicateMovement(true);
 
 	// create the root
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
@@ -62,6 +67,26 @@ void AShooterWeapon::EndPlay(EEndPlayReason::Type EndPlayReason)
 	GetWorld()->GetTimerManager().ClearTimer(RefireTimer);
 }
 
+bool AShooterWeapon::CanFire() const
+{
+	return ProjectileClass != nullptr;
+}
+
+FTransform AShooterWeapon::ComputeMuzzleTransform_Server(const class AShooterCharacter* OwnerChar) const
+{
+	const USkeletalMeshComponent* Mesh = GetThirdPersonMesh();
+	const FName Socket = MuzzleSocketName.IsNone() ? TEXT("Muzzle") : MuzzleSocketName;
+
+	if (Mesh && Mesh->DoesSocketExist(Socket))
+	{
+		return Mesh->GetSocketTransform(Socket,RTS_World);
+	}
+	const FVector Base = OwnerChar ? OwnerChar->GetActorLocation()      : FVector::ZeroVector;
+	const FRotator Rot = OwnerChar ? OwnerChar->GetActorRotation()      : FRotator::ZeroRotator;
+	return FTransform(Rot, Base + (FRotationMatrix(Rot).GetUnitAxis(EAxis::X) * 50.f), FVector::OneVector);
+}
+
+
 void AShooterWeapon::OnOwnerDestroyed(AActor* DestroyedActor)
 {
 	// ensure this weapon is destroyed when the owner is destroyed
@@ -102,15 +127,14 @@ void AShooterWeapon::StartFiring()
 	{
 		// fire the weapon right away
 		Fire();
-
-	} else {
-
+	}
+	else
+	{
 		// if we're full auto, schedule the next shot
 		if (bFullAuto)
 		{
 			GetWorld()->GetTimerManager().SetTimer(RefireTimer, this, &AShooterWeapon::Fire, TimeSinceLastShot, false);
 		}
-
 	}
 }
 
@@ -130,7 +154,7 @@ void AShooterWeapon::Fire()
 	{
 		return;
 	}
-	
+
 	// fire a projectile at the target
 	FireProjectile(WeaponOwner->GetWeaponTargetLocation());
 
@@ -145,11 +169,12 @@ void AShooterWeapon::Fire()
 	{
 		// schedule the next shot
 		GetWorld()->GetTimerManager().SetTimer(RefireTimer, this, &AShooterWeapon::Fire, RefireRate, false);
-	} else {
-
+	}
+	else
+	{
 		// for semi-auto weapons, schedule the cooldown notification
-		GetWorld()->GetTimerManager().SetTimer(RefireTimer, this, &AShooterWeapon::FireCooldownExpired, RefireRate, false);
-
+		GetWorld()->GetTimerManager().SetTimer(RefireTimer, this, &AShooterWeapon::FireCooldownExpired, RefireRate,
+		                                       false);
 	}
 }
 
@@ -163,7 +188,7 @@ void AShooterWeapon::FireProjectile(const FVector& TargetLocation)
 {
 	// get the projectile transform
 	FTransform ProjectileTransform = CalculateProjectileSpawnTransform(TargetLocation);
-	
+
 	// spawn the projectile
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -171,7 +196,8 @@ void AShooterWeapon::FireProjectile(const FVector& TargetLocation)
 	SpawnParams.Owner = GetOwner();
 	SpawnParams.Instigator = PawnOwner;
 
-	AShooterProjectile* Projectile = GetWorld()->SpawnActor<AShooterProjectile>(ProjectileClass, ProjectileTransform, SpawnParams);
+	AShooterProjectile* Projectile = GetWorld()->SpawnActor<AShooterProjectile>(
+		ProjectileClass, ProjectileTransform, SpawnParams);
 
 	// play the firing montage
 	WeaponOwner->PlayFiringMontage(FiringMontage);
@@ -201,7 +227,8 @@ FTransform AShooterWeapon::CalculateProjectileSpawnTransform(const FVector& Targ
 	const FVector SpawnLoc = MuzzleLoc + ((TargetLocation - MuzzleLoc).GetSafeNormal() * MuzzleOffset);
 
 	// find the aim rotation vector while applying some variance to the target 
-	const FRotator AimRot = UKismetMathLibrary::FindLookAtRotation(SpawnLoc, TargetLocation + (UKismetMathLibrary::RandomUnitVector() * AimVariance));
+	const FRotator AimRot = UKismetMathLibrary::FindLookAtRotation(
+		SpawnLoc, TargetLocation + (UKismetMathLibrary::RandomUnitVector() * AimVariance));
 
 	// return the built transform
 	return FTransform(AimRot, SpawnLoc, FVector::OneVector);

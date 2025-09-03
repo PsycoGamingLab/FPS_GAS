@@ -1,82 +1,103 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
+// FPS_GAS_ShootAbility.cpp
 
 #include "Variant_Shooter/AbilitySystem/Abilities/FPS_GAS_ShootAbility.h"
 
 #include "AbilitySystemComponent.h"
+#include "FPS_GAS_GameplayTags.h"
 #include "ShooterCharacter.h"
+#include "ShooterWeapon.h"
 #include "ShooterProjectile.h"
-#include "GameFramework/Character.h"
-#include "Kismet/KismetMathLibrary.h"
+#include "Engine/World.h"
 
+UFPS_GAS_ShootAbility::UFPS_GAS_ShootAbility()
+{
+    // Per sbloccarci oggi: tutto lato server
+    NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
+
+    // Tag dell'abilità (nuova API AssetTags)
+    FGameplayTagContainer Tags = GetAssetTags();
+    Tags.AddTag(FFPS_GAS_GameplayTags::Get().Ability_Shoot);
+    SetAssetTags(Tags);
+}
+
+bool UFPS_GAS_ShootAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handle,
+    const FGameplayAbilityActorInfo* Info,
+    const FGameplayTagContainer* SourceTags,
+    const FGameplayTagContainer* TargetTags,
+    FGameplayTagContainer* OptionalRelevantTags) const
+{
+    if (!Super::CanActivateAbility(Handle, Info, SourceTags, TargetTags, OptionalRelevantTags))
+        return false;
+
+    AShooterCharacter* Char = Info ? Cast<AShooterCharacter>(Info->AvatarActor.Get()) : nullptr;
+    const AShooterWeapon*    Weapon = Char ? Char->GetCurrentWeapon() : nullptr;
+
+    // Niente arma o nessun projectile → non attivare
+    return (Weapon && Weapon->GetProjectileClass() != nullptr);
+}
 
 void UFPS_GAS_ShootAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
-                                            const FGameplayAbilityActorInfo* ActorInfo,
-                                            const FGameplayAbilityActivationInfo ActivationInfo,
-                                            const FGameplayEventData* TriggerEventData)
+    const FGameplayAbilityActorInfo* Info,
+    const FGameplayAbilityActivationInfo ActivationInfo,
+    const FGameplayEventData* TriggerData)
 {
-	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	if (AShooterCharacter* Character = Cast<AShooterCharacter>(ActorInfo->AvatarActor.Get()))
-	{
-		if (Character->GetCurrentWeapon() == nullptr || Character->GetCurrentWeapon()->GetFirstPersonMesh() == nullptr)
-		{
-		
-			EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-			return;
-		}
-		USkeletalMeshComponent* Mesh = Character->GetCurrentWeapon()->GetFirstPersonMesh();
-		const FTransform MuzzleTransform = Mesh->GetSocketTransform(FName("Muzzle"));
-		FireProjectile(MuzzleTransform.GetLocation());
-	}
-}
+    AShooterCharacter* Char = Info ? Cast<AShooterCharacter>(Info->AvatarActor.Get()) : nullptr;
+    AShooterWeapon*    Weapon = Char ? Char->GetCurrentWeapon() : nullptr;
 
-void UFPS_GAS_ShootAbility::FireProjectile(const FVector& TargetLocation)
-{
-	// get the projectile transform
-	FTransform ProjectileTransform = CalculateProjectileSpawnTransform(TargetLocation);
+    if (!Char || !Weapon || !Weapon->GetProjectileClass())
+    {
+        EndAbility(Handle, Info, ActivationInfo, /*bReplicateEnd*/true, /*bWasCancelled*/true);
+        return;
+    }
 
-	// spawn the projectile
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	SpawnParams.TransformScaleMethod = ESpawnActorScaleMethod::OverrideRootScale;
-	SpawnParams.Owner = GetActorInfo().AbilitySystemComponent->GetAvatarActor();
-	SpawnParams.Instigator = nullptr;
+    // --- 1) Trasform del muzzle dell’arma (server → mesh 3P) ---
+    const FTransform MuzzleTM   = Weapon->ComputeMuzzleTransform_Server(Char);
+    const FVector    MuzzleLoc  = MuzzleTM.GetLocation();
+    const FVector    MuzzleFwd  = MuzzleTM.GetRotation().GetForwardVector(); // X in avanti per socket standard
 
-	AShooterProjectile* Projectile = GetWorld()->SpawnActor<AShooterProjectile>(
-		ProjectileClass, ProjectileTransform, SpawnParams);
+    // Spawn un pelo avanti per evitare compenetrazioni
+    const FVector SpawnLoc = MuzzleLoc + (MuzzleFwd * Weapon->GetMuzzleOffset());
 
-	// play the firing montage
-	//WeaponOwner->PlayFiringMontage(FiringMontage);
+    // --- 2) Punto di mira: trace dagli “occhi” del character (server-safe) ---
+    FVector EyeLoc; FRotator EyeRot;
+    Char->GetActorEyesViewPoint(EyeLoc, EyeRot);
 
-	// add recoil
-	//WeaponOwner->AddWeaponRecoil(FiringRecoil);
+    const FVector TraceEnd = EyeLoc + (EyeRot.Vector() * 10000.f);
+    FHitResult Hit;
+    FCollisionQueryParams CQ(SCENE_QUERY_STAT(GAS_ShootAim), /*bTraceComplex*/true, Char);
+    GetWorld()->LineTraceSingleByChannel(Hit, EyeLoc, TraceEnd, ECC_Visibility, CQ);
 
-	// consume bullets
-	--CurrentBullets;
+    const FVector AimPoint = Hit.bBlockingHit ? Hit.ImpactPoint : TraceEnd;
 
-	// if the clip is depleted, reload it
-	if (CurrentBullets <= 0)
-	{
-		CurrentBullets = MagazineSize;
-	}
+    // --- 3) Spread in "cm" convertito in angolo (rad) in base alla distanza ---
+    const FVector AimDir = (AimPoint - SpawnLoc).GetSafeNormal();
+    const float   Dist   = FVector::Distance(SpawnLoc, AimPoint);
 
-	// update the weapon HUD
-//	WeaponOwner->UpdateWeaponHUD(CurrentBullets, MagazineSize);
-}
+    float HalfAngleRad = 0.f;
+    if (Dist > 1.f)
+    {
+        const float SpreadCm = Weapon->GetAimVariance();    // interpretato come "cm" (compatibile con la tua logica originale)
+        HalfAngleRad = FMath::Atan(SpreadCm / Dist);        // ~ arctan(offset/dist)
+        HalfAngleRad = FMath::Min(HalfAngleRad, FMath::DegreesToRadians(10.f)); // safety clamp
+    }
 
-FTransform UFPS_GAS_ShootAbility::CalculateProjectileSpawnTransform(const FVector& TargetLocation) const
-{
-	if (FirstPersonMesh == nullptr) return FTransform();
-	// find the muzzle location
-	const FVector MuzzleLoc = FirstPersonMesh->GetSocketLocation(MuzzleSocketName);
+    const FVector  JitteredDir = (HalfAngleRad > 0.f) ? FMath::VRandCone(AimDir, HalfAngleRad) : AimDir;
+    const FRotator SpawnRot    = JitteredDir.Rotation();
+    const FTransform SpawnTM(SpawnRot, SpawnLoc, FVector::OneVector);
 
-	// calculate the spawn location ahead of the muzzle
-	const FVector SpawnLoc = MuzzleLoc + ((TargetLocation - MuzzleLoc).GetSafeNormal() * MuzzleOffset);
+    // --- 4) Spawn del proiettile (server) ---
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    SpawnParams.Owner = Info->OwnerActor.Get();
+    if (APawn* InstigatorPawn = Cast<APawn>(Info->AvatarActor.Get()))
+    {
+        SpawnParams.Instigator = InstigatorPawn;
+    }
 
-	// find the aim rotation vector while applying some variance to the target 
-	const FRotator AimRot = UKismetMathLibrary::FindLookAtRotation(
-		SpawnLoc, TargetLocation + (UKismetMathLibrary::RandomUnitVector() * AimVariance));
+    AShooterProjectile* Proj = GetWorld()->SpawnActor<AShooterProjectile>(
+        Weapon->GetProjectileClass(), SpawnTM, SpawnParams);
 
-	// return the built transform
-	return FTransform(AimRot, SpawnLoc, FVector::OneVector);
+    // (FX, recoil, HUD → spostali in GameplayCues/Attributes quando vuoi)
+
+    EndAbility(Handle, Info, ActivationInfo, /*bReplicateEnd*/true, /*bWasCancelled*/false);
 }

@@ -34,6 +34,7 @@ void AShooterCharacter::PossessedBy(AController* NewController)
 void AShooterCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
+	InitAbilityActorInfo();
 }
 
 void AShooterCharacter::InitAbilityActorInfo()
@@ -125,11 +126,17 @@ float AShooterCharacter::TakeDamage(float Damage, struct FDamageEvent const& Dam
 
 void AShooterCharacter::DoStartFiring()
 {
-	// fire the current weapon
-	if (CurrentWeapon)
-	{
-		CurrentWeapon->StartFiring();
-	}
+	if (!AbilitySystemComponent) return;
+
+	FGameplayTagContainer ActivationTags;
+	ActivationTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Shoot")));
+	AbilitySystemComponent->TryActivateAbilitiesByTag(ActivationTags);
+	
+	// // fire the current weapon
+	// if (CurrentWeapon)
+	// {
+	// 	CurrentWeapon->StartFiring();
+	// }
 }
 
 void AShooterCharacter::DoStopFiring()
