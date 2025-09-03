@@ -15,5 +15,8 @@ public:
 	// Ability
 	FGameplayTag Ability_Shoot;
 
+	FGameplayTag Data_Damage;
+	FGameplayTag State_Dead;
+
 	static FFPS_GAS_GameplayTags GameplayTags;
 };

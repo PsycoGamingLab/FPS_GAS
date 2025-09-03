@@ -5,7 +5,9 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "GameFramework/PlayerState.h"
+#include "Attributes/AttributeSet_Health.h"
 #include "FPS_GAS_PlayerState.generated.h"
+
 
 class UAbilitySystemComponent;
 /**
@@ -21,6 +23,9 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
+	// Attributes
+	UAttributeSet_Health* GetHealthSet() const { return HealthSet; }
+
 protected:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
@@ -29,6 +34,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere,ReplicatedUsing=OnRep_Level)
 	int32 level = 1;
+
+	UPROPERTY()
+	TObjectPtr<UAttributeSet_Health> HealthSet;
 
 	UFUNCTION()
 	void OnRep_Level(int32 OldLevel);

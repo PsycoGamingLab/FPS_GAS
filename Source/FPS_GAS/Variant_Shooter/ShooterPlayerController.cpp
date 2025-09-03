@@ -132,8 +132,16 @@ void AShooterPlayerController::OnPossess(APawn* InPawn)
 
 void AShooterPlayerController::OnPawnDestroyed(AActor* DestroyedActor)
 {
-	// reset the bullet counter HUD
-	BulletCounterUI->BP_UpdateBulletCounter(0, 0);
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
+	if (BulletCounterUI)
+	{
+		// reset the bullet counter HUD
+		BulletCounterUI->BP_UpdateBulletCounter(0, 0);
+	}	
 
 	// find the player start
 	TArray<AActor*> ActorList;

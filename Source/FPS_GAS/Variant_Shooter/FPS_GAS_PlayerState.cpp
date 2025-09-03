@@ -12,6 +12,9 @@ AFPS_GAS_PlayerState::AFPS_GAS_PlayerState()
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
 	SetNetUpdateFrequency(100.f);
+
+	HealthSet = CreateDefaultSubobject<UAttributeSet_Health>(TEXT("HealthSet"));
+	AbilitySystemComponent->AddAttributeSetSubobject(HealthSet.Get());
 	
 }
 

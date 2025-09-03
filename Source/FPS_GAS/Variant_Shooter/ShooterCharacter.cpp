@@ -28,6 +28,15 @@ void AShooterCharacter::PossessedBy(AController* NewController)
 
 	// Init ability actor info for the server
 	InitAbilityActorInfo();
+	
+	if (HasAuthority() && AbilitySystemComponent)
+	{
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UAttributeSet_Health::GetMaxHealthAttribute(), 100.f);
+		AbilitySystemComponent->SetNumericAttributeBase(
+			UAttributeSet_Health::GetHealthAttribute(),    100.f);
+	}
+
 	AddCharacterAbilities();
 }
 
@@ -43,7 +52,14 @@ void AShooterCharacter::InitAbilityActorInfo()
 	check(FPS_GAS_PlayerState);
 	FPS_GAS_PlayerState->GetAbilitySystemComponent()->InitAbilityActorInfo(FPS_GAS_PlayerState, this);
 	Cast<UFPS_GAS_AbilitySystemComponent>(FPS_GAS_PlayerState->GetAbilitySystemComponent())->AbilityActorInfoSet();
-	AbilitySystemComponent = FPS_GAS_PlayerState->GetAbilitySystemComponent();	
+	AbilitySystemComponent = FPS_GAS_PlayerState->GetAbilitySystemComponent();
+
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+			UAttributeSet_Health::GetHealthAttribute())
+			.AddUObject(this, &AShooterCharacter::OnHealthChanged);
+	}
 }
 
 void AShooterCharacter::AddCharacterAbilities()
@@ -52,6 +68,28 @@ void AShooterCharacter::AddCharacterAbilities()
 	if(!HasAuthority())return;;
 
 	FPS_GAS_ASC->AddCharacterAbilities(StartupAbilities);
+}
+
+void AShooterCharacter::OnHealthChanged(const FOnAttributeChangeData& Data)
+{
+	const float NewHealth = Data.NewValue;
+
+	// Leggi MaxHealth dall'ASC (fallback di sicurezza)
+	float Max = 100.f;
+	if (AbilitySystemComponent)
+	{
+		Max = AbilitySystemComponent->GetNumericAttribute(UAttributeSet_Health::GetMaxHealthAttribute());
+		if (Max <= 0.f) { Max = 1.f; }
+	}
+
+	// Aggiorna HUD/barra vita (tuo delegate esistente)
+	OnDamaged.Broadcast(FMath::Clamp(NewHealth / Max, 0.f, 1.f));
+
+	// Death handling
+	if (NewHealth <= 0.f)
+	{
+		Die(); // usa la tua funzione già presente
+	}
 }
 
 AShooterCharacter::AShooterCharacter()

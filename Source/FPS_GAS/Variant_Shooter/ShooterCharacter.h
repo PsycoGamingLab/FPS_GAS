@@ -8,6 +8,7 @@
 #include "ShooterWeaponHolder.h"
 #include "Abilities/GameplayAbility.h"
 #include "ShooterWeapon.h"
+#include "GameplayEffectTypes.h" 
 #include "ShooterCharacter.generated.h"
 
 
@@ -96,6 +97,9 @@ protected:
 	float RespawnTime = 5.0f;
 
 	FTimerHandle RespawnTimer;
+
+	
+	void OnHealthChanged(const FOnAttributeChangeData& Data);
 
 public:
 	/** Bullet count updated delegate */

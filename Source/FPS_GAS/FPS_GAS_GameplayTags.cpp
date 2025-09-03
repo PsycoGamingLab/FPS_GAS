@@ -16,6 +16,18 @@ void FFPS_GAS_GameplayTags::InitializeNativeGameplayTags()
 	// Ability
 	GameplayTags.Ability_Shoot = UGameplayTagsManager::Get().AddNativeGameplayTag(
 		FName("Ability.Shoot"),
-		TEXT("Shoot ability tag"));
+		TEXT("Shoot ability tag"));	
+	
+	GameplayTags.Data_Damage = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("Data.Damage"),
+		TEXT("SetByCaller damage")
+		);
+
+	
+	GameplayTags.State_Dead  = UGameplayTagsManager::Get().AddNativeGameplayTag(
+		FName("State.Dead"),
+		TEXT("Character is dead")
+		);
+
 	
 }
