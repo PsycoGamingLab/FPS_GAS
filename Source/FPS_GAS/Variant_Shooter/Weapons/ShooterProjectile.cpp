@@ -41,6 +41,11 @@ AShooterProjectile::AShooterProjectile()
 	HitDamageType = nullptr;
 }
 
+float AShooterProjectile::GetCollisionRadius() const
+{
+	return CollisionComponent ? CollisionComponent->GetScaledSphereRadius() : 0.f;
+}
+
 void AShooterProjectile::BeginPlay()
 {
 	Super::BeginPlay();

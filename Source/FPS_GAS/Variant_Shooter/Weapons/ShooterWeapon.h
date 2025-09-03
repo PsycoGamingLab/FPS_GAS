@@ -42,6 +42,15 @@ public:
 
 	FTransform ComputeMuzzleTransform_Server(const class AShooterCharacter* OwnerChar) const;
 
+	UPROPERTY(EditDefaultsOnly, Category="Animation")
+	UAnimMontage* FirstPersonFiringMontage = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category="Animation")
+	UAnimMontage* ThirdPersonFiringMontage = nullptr;
+	
+	UAnimMontage* GetFirstPersonFiringMontage() const { return FirstPersonFiringMontage; }
+	UAnimMontage* GetThirdPersonFiringMontage() const { return ThirdPersonFiringMontage; }
+
 protected:
 	/** Cast pointer to the weapon owner */
 	IShooterWeaponHolder* WeaponOwner;

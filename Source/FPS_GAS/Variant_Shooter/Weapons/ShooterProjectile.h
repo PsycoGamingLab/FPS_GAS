@@ -95,6 +95,8 @@ protected:
 public:
 	AShooterProjectile();
 
+	float GetCollisionRadius() const;
+
 protected:
 	// AActor
 	virtual void BeginPlay() override;
