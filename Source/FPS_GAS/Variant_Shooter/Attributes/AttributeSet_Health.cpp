@@ -34,11 +34,17 @@ void UAttributeSet_Health::PreAttributeChange(const FGameplayAttribute& Attr, fl
 void UAttributeSet_Health::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
     Super::PostGameplayEffectExecute(Data);
-
+ 
     if (Data.EvaluatedData.Attribute == GetHealthAttribute())
     {
         const float Clamped = FMath::Clamp(GetHealth(), 0.f, GetMaxHealth());
         SetHealth(Clamped);
+        if (GetHealth()>0)
+        {
+            UAbilitySystemComponent* TargetASC = GetOwningAbilitySystemComponent();
+            TargetASC->TryActivateAbilitiesByTag(FGameplayTagContainer(FGameplayTag::RequestGameplayTag("Ability.HitReact")));
+        }
+      
     }
     else if (Data.EvaluatedData.Attribute == GetMaxHealthAttribute())
     {

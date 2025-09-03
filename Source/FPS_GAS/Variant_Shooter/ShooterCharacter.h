@@ -46,6 +46,7 @@ public:
 
 	UFUNCTION()
 	AShooterWeapon* GetCurrentWeapon(){return CurrentWeapon;}
+
 protected:
 
 	/** Ability System Component */

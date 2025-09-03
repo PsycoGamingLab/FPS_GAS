@@ -16,6 +16,7 @@
 #include "Camera/CameraComponent.h"
 #include "TimerManager.h"
 #include "ShooterGameMode.h"
+#include "FPS_GAS_GameplayTags.h"
 
 UAbilitySystemComponent* AShooterCharacter::GetAbilitySystemComponent() const
 {
@@ -45,6 +46,7 @@ void AShooterCharacter::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	InitAbilityActorInfo();
 }
+
 
 void AShooterCharacter::InitAbilityActorInfo()
 {

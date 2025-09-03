@@ -15,8 +15,14 @@ public:
 	// Ability
 	FGameplayTag Ability_Shoot;
 
+	// Player status
 	FGameplayTag Data_Damage;
 	FGameplayTag State_Dead;
+
+	// Montage
+	FGameplayTag Event_HitReact;
+	FGameplayTag Ability_HitReact;
+	FGameplayTag Effect_HitReact;
 
 	static FFPS_GAS_GameplayTags GameplayTags;
 };
