@@ -123,10 +123,17 @@ protected:
 	/** Set up input action bindings */
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 
+	// --- UI: client update for health bar ---
+	UFUNCTION(Client, Reliable)
+	void Client_UpdateHUDHealth(float NormalizedHealth);
+
+	// Local helper that actually touches the widget/HUD
+	void UpdateHUDHealth_Local(float NormalizedHealth);
+
 public:
 	/** Handle incoming damage */
-	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator,
-	                         AActor* DamageCauser) override;
+	//virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator,
+	//                       AActor* DamageCauser) override;
 
 public:
 	/** Handles start firing input */

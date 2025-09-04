@@ -4,6 +4,7 @@
 #include "ShooterCharacter.h"
 
 #include "AbilitySystemComponent.h"
+#include "Attributes/AttributeSet_Health.h"
 #include "ShooterWeapon.h"
 #include "EnhancedInputComponent.h"
 #include "FPS_GAS_AbilitySystemComponent.h"
@@ -61,6 +62,24 @@ void AShooterCharacter::InitAbilityActorInfo()
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 			UAttributeSet_Health::GetHealthAttribute())
 			.AddUObject(this, &AShooterCharacter::OnHealthChanged);
+
+		float Cur = AbilitySystemComponent->GetNumericAttribute(UAttributeSet_Health::GetHealthAttribute());
+		float Max = AbilitySystemComponent->GetNumericAttribute(UAttributeSet_Health::GetMaxHealthAttribute());
+		if (Max <= 0.f) { Max = 1.f; }
+		const float Normalized = FMath::Clamp(Cur / Max, 0.f, 1.f);
+
+		if (HasAuthority())
+		{
+			Client_UpdateHUDHealth(Normalized);
+			if (IsLocallyControlled())
+			{
+				UpdateHUDHealth_Local(Normalized); // listen server host
+			}
+		}
+		else if (IsLocallyControlled())
+		{
+			UpdateHUDHealth_Local(Normalized); // client owner
+		}
 	}
 }
 
@@ -76,21 +95,33 @@ void AShooterCharacter::OnHealthChanged(const FOnAttributeChangeData& Data)
 {
 	const float NewHealth = Data.NewValue;
 
-	// Leggi MaxHealth dall'ASC (fallback di sicurezza)
 	float Max = 100.f;
 	if (AbilitySystemComponent)
 	{
 		Max = AbilitySystemComponent->GetNumericAttribute(UAttributeSet_Health::GetMaxHealthAttribute());
 		if (Max <= 0.f) { Max = 1.f; }
 	}
+	const float Normalized = FMath::Clamp(NewHealth / Max, 0.f, 1.f);
 
-	// Aggiorna HUD/barra vita (tuo delegate esistente)
-	OnDamaged.Broadcast(FMath::Clamp(NewHealth / Max, 0.f, 1.f));
-
-	// Death handling
-	if (NewHealth <= 0.f)
+	// SERVER: send to owning client + also update locally if this is a listen server host.
+	if (HasAuthority())
 	{
-		Die(); // usa la tua funzione già presente
+		Client_UpdateHUDHealth(Normalized);
+		if (IsLocallyControlled())
+		{
+			// Listen server host sees his own HUD update immediately
+			UpdateHUDHealth_Local(Normalized);
+		}
+
+		if (NewHealth <= 0.f)
+		{
+			Die(); // server-only death flow
+		}
+	}
+	// CLIENT OWNER: update HUD locally (no RPC)
+	else if (IsLocallyControlled())
+	{
+		UpdateHUDHealth_Local(Normalized);
 	}
 }
 
@@ -107,12 +138,6 @@ AShooterCharacter::AShooterCharacter()
 void AShooterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// reset HP to max
-	CurrentHP = MaxHP;
-
-	// update the HUD
-	OnDamaged.Broadcast(1.0f);
 }
 
 void AShooterCharacter::EndPlay(EEndPlayReason::Type EndPlayReason)
@@ -141,42 +166,49 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 }
 
-float AShooterCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+void AShooterCharacter::Client_UpdateHUDHealth_Implementation(float NormalizedHealth)
 {
-	// ignore if already dead
-	if (CurrentHP <= 0.0f)
-	{
-		return 0.0f;
-	}
-
-	// Reduce HP
-	CurrentHP -= Damage;
-
-	// Have we depleted HP?
-	if (CurrentHP <= 0.0f)
-	{
-		Die();
-	}
-
-	// update the HUD
-	OnDamaged.Broadcast(FMath::Max(0.0f, CurrentHP / MaxHP));
-
-	return Damage;
+	// Runs only on owning client.
+	UpdateHUDHealth_Local(NormalizedHealth);
 }
+
+void AShooterCharacter::UpdateHUDHealth_Local(float NormalizedHealth)
+{
+	OnDamaged.Broadcast(NormalizedHealth);
+}
+
+// float AShooterCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+// {
+// 	// ignore if already dead
+// 	if (CurrentHP <= 0.0f)
+// 	{
+// 		return 0.0f;
+// 	}
+//
+// 	// Reduce HP
+// 	CurrentHP -= Damage;
+//
+// 	// Have we depleted HP?
+// 	if (CurrentHP <= 0.0f)
+// 	{
+// 		Die();
+// 	}
+//
+// 	// update the HUD
+// 	OnDamaged.Broadcast(FMath::Max(0.0f, CurrentHP / MaxHP));
+//
+// 	return Damage;
+// }
 
 void AShooterCharacter::DoStartFiring()
 {
 	if (!AbilitySystemComponent) return;
 
+	// Fire weapon with GAS
 	FGameplayTagContainer ActivationTags;
 	ActivationTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Shoot")));
 	AbilitySystemComponent->TryActivateAbilitiesByTag(ActivationTags);
 	
-	// // fire the current weapon
-	// if (CurrentWeapon)
-	// {
-	// 	CurrentWeapon->StartFiring();
-	// }
 }
 
 void AShooterCharacter::DoStopFiring()
@@ -227,7 +259,7 @@ void AShooterCharacter::AttachWeaponMeshes(AShooterWeapon* Weapon)
 
 	// attach the weapon meshes
 	Weapon->GetFirstPersonMesh()->AttachToComponent(GetFirstPersonMesh(), AttachmentRule, FirstPersonWeaponSocket);
-	Weapon->GetThirdPersonMesh()->AttachToComponent(GetMesh(), AttachmentRule, FirstPersonWeaponSocket);
+	Weapon->GetThirdPersonMesh()->AttachToComponent(GetMesh(), AttachmentRule, ThirdPersonWeaponSocket);
 	
 }
 
@@ -336,31 +368,28 @@ AShooterWeapon* AShooterCharacter::FindWeaponOfType(TSubclassOf<AShooterWeapon> 
 
 void AShooterCharacter::Die()
 {
-	// deactivate the weapon
+	// Only the server should run authoritative death logic
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	if (IsValid(CurrentWeapon))
 	{
 		CurrentWeapon->DeactivateWeapon();
 	}
 
-	// increment the team score
 	if (AShooterGameMode* GM = Cast<AShooterGameMode>(GetWorld()->GetAuthGameMode()))
 	{
 		GM->IncrementTeamScore(TeamByte);
 	}
-		
-	// stop character movement
-	GetCharacterMovement()->StopMovementImmediately();
 
-	// disable controls
+	GetCharacterMovement()->StopMovementImmediately();
 	DisableInput(nullptr);
 
-	// reset the bullet counter UI
 	OnBulletCountUpdated.Broadcast(0, 0);
-
-	// call the BP handler
 	BP_OnDeath();
 
-	// schedule character respawn
 	GetWorld()->GetTimerManager().SetTimer(RespawnTimer, this, &AShooterCharacter::OnRespawn, RespawnTime, false);
 }
 
