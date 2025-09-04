@@ -16,6 +16,8 @@ AShooterProjectile::AShooterProjectile()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	bHit = false;
+	
 	// Replication setup so clients can see projectiles (including their own)
 	bReplicates = true;
 	SetReplicateMovement(true);

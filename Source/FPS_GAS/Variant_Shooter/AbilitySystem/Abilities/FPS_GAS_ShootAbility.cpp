@@ -1,5 +1,3 @@
-// FPS_GAS_ShootAbility.cpp
-
 #include "Variant_Shooter/AbilitySystem/Abilities/FPS_GAS_ShootAbility.h"
 
 #include "AbilitySystemComponent.h"
