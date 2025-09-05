@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
 #include "ShooterWeaponHolder.h"
 #include "Animation/AnimInstance.h"
@@ -26,6 +27,31 @@ class FPS_GAS_API AShooterWeapon : public AActor
 	GENERATED_BODY()
 
 public:
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	/** Ammo */
+	UPROPERTY(EditDefaultsOnly, Category="Ammo")
+	FGameplayTag AmmoTypeTag;
+
+	FGameplayTag GetAmmoTypeTag() const { return AmmoTypeTag; }
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Ammo")
+	int32 ClipSize = 30;
+
+	UPROPERTY(ReplicatedUsing=OnRep_CurrentClip, BlueprintReadOnly, Category="Ammo")
+	int32 CurrentClip = 0;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Pickup")
+	int32 StartingClips = 2; // quante clip di riserva dare al primo pickup
+
+	UFUNCTION() void OnRep_CurrentClip();
+
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnClipChanged,int32);
+	FOnClipChanged OnClipChanged;
+
+	void SetCurrentClip(int32 NewValue);
+
 	/** First person perspective mesh */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* FirstPersonMesh;

@@ -12,6 +12,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Pawn.h"
 #include "ShooterCharacter.h" 
+#include "Net/UnrealNetwork.h"
 
 
 AShooterWeapon::AShooterWeapon()
@@ -39,6 +40,26 @@ AShooterWeapon::AShooterWeapon()
 	ThirdPersonMesh->SetCollisionProfileName(FName("NoCollision"));
 	ThirdPersonMesh->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::WorldSpaceRepresentation);
 	ThirdPersonMesh->bOwnerNoSee = true;
+}
+
+void AShooterWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AShooterWeapon, CurrentClip);
+}
+
+void AShooterWeapon::OnRep_CurrentClip()
+{
+	OnClipChanged.Broadcast(CurrentClip);
+}
+
+void AShooterWeapon::SetCurrentClip(int32 NewValue)
+{
+	if (HasAuthority())
+	{
+		CurrentClip = FMath::Max(0, NewValue);
+		OnRep_CurrentClip();
+	}
 }
 
 void AShooterWeapon::BeginPlay()
